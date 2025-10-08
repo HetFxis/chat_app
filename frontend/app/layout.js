@@ -13,9 +13,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Chat App - Real-time Messaging",
+  title: "Chat App",
   description: "Real-time chat application with push notifications",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/icon.png"
+  },  
 };
 
 export default function RootLayout({ children }) {

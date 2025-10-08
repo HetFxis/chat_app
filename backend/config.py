@@ -1,8 +1,10 @@
 import os
 from pydantic_settings import BaseSettings
-from pydantic import ConfigDict
+from pydantic import ConfigDict, Field
 from typing import List
- 
+from dotenv import load_dotenv
+load_dotenv()  # reads .env into environment
+
 class Settings(BaseSettings):
     # Database
     database_url: str = "sqlite:///./chat.db"
@@ -21,10 +23,10 @@ class Settings(BaseSettings):
     port: int = 8000
     
     # Push Notifications (VAPID) - Generated from vapidkeys.com
-    vapid_public_key: str = os.getenv("VAPID_PUBLIC_KEY", "")
-    vapid_private_key: str = os.getenv("VAPID_PRIVATE_KEY", "")
-    vapid_email: str = os.getenv("VAPID_EMAIL", "mailto:your-email@example.com") 
+    vapid_public_key: str = os.environ["PUBLIC_KEY"]
+    vapid_private_key: str  = os.environ["PRIVATE_KEY"]
+    vapid_email: str  = os.environ["VAPID_EMAIL"]
 
-    model_config = ConfigDict(env_file=".env")
+    model_config = ConfigDict(env_file=".env", extra="ignore")
 
 settings = Settings()

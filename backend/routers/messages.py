@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from typing import List
 
 from database import get_db
@@ -16,21 +17,40 @@ async def get_messages(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    messages = db.query(Message).filter(
-        Message.room == room
-    ).order_by(Message.timestamp.desc()).limit(limit).all()
-    
-    return [
-        MessageResponse(
-            id=msg.id,
-            content=msg.content,
-            sender=msg.sender.username,
-            timestamp=msg.timestamp,
-            room=msg.room,
-            isPrivate=msg.room.startswith("private_")
+    try:
+        # Use raw SQL to avoid SQLAlchemy pagination issues
+        from sqlalchemy import text
+        
+        query = text("""
+            SELECT m.id, m.content, m.sender_id, m.room, m.group_id, m.timestamp, u.username
+            FROM messages m
+            JOIN users u ON m.sender_id = u.id
+            WHERE m.room = :room
+            ORDER BY m.timestamp DESC
+            LIMIT :limit
+        """)
+        
+        result = db.execute(query, {"room": room, "limit": limit}).fetchall()
+        
+        messages = []
+        for row in result:
+            messages.append(MessageResponse(
+                id=row.id,
+                content=row.content,
+                sender=row.username,
+                timestamp=row.timestamp,
+                room=row.room,
+                isPrivate=row.room.startswith("private_"),
+                group_id=row.group_id
+            ))
+        
+        return list(reversed(messages))
+    except SQLAlchemyError as e:
+        print(f"Database error in get_messages: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch messages"
         )
-        for msg in reversed(messages)
-    ]
 
 @router.get("/messages/private/{other_user}", response_model=List[MessageResponse])
 async def get_private_messages(
@@ -39,22 +59,41 @@ async def get_private_messages(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    # Create consistent room name for private messages
-    room_name = f"private_{min(current_user.username, other_user)}_{max(current_user.username, other_user)}"
-    
-    messages = db.query(Message).filter(
-        Message.room == room_name
-    ).order_by(Message.timestamp.desc()).limit(limit).all()
-    
-    return [
-        MessageResponse(
-            id=msg.id,
-            content=msg.content,
-            sender=msg.sender.username,
-            timestamp=msg.timestamp,
-            room=msg.room,
-            isPrivate=True,
-            recipient=other_user if msg.sender.username == current_user.username else current_user.username
+    try:
+        # Create consistent room name for private messages
+        room_name = f"private_{min(current_user.username, other_user)}_{max(current_user.username, other_user)}"
+        
+        # Use raw SQL to avoid SQLAlchemy pagination issues
+        from sqlalchemy import text
+        
+        query = text("""
+            SELECT m.id, m.content, m.sender_id, m.room, m.group_id, m.timestamp, u.username
+            FROM messages m
+            JOIN users u ON m.sender_id = u.id
+            WHERE m.room = :room_name
+            ORDER BY m.timestamp DESC
+            LIMIT :limit
+        """)
+        
+        result = db.execute(query, {"room_name": room_name, "limit": limit}).fetchall()
+        
+        messages = []
+        for row in result:
+            messages.append(MessageResponse(
+                id=row.id,
+                content=row.content,
+                sender=row.username,
+                timestamp=row.timestamp,
+                room=row.room,
+                isPrivate=True,
+                recipient=other_user if row.username == current_user.username else current_user.username,
+                group_id=row.group_id
+            ))
+        
+        return list(reversed(messages))
+    except SQLAlchemyError as e:
+        print(f"Database error in get_private_messages: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch private messages"
         )
-        for msg in reversed(messages)
-    ]

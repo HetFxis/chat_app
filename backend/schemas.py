@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 # User Schemas
 class UserBase(BaseModel):
@@ -44,5 +44,33 @@ class MessageResponse(MessageBase):
     room: str
     isPrivate: Optional[bool] = False
     recipient: Optional[str] = None
+    group_id: Optional[int] = None
+    
+    model_config = ConfigDict(from_attributes=True)
+
+# Group Schemas
+class GroupBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+    is_private: bool = False
+    max_members: int = 100
+
+class GroupCreate(GroupBase):
+    members: Optional[List[str]] = []
+
+class GroupResponse(GroupBase):
+    id: int
+    created_by: int
+    created_at: datetime
+    member_count: Optional[int] = 0
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class GroupMemberResponse(BaseModel):
+    id: int
+    username: str
+    email: str
+    joined_at: Optional[datetime] = None
+    role: Optional[str] = "member"
     
     model_config = ConfigDict(from_attributes=True)
