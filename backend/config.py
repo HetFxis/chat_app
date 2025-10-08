@@ -1,0 +1,30 @@
+import os
+from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
+from typing import List
+ 
+class Settings(BaseSettings):
+    # Database
+    database_url: str = "sqlite:///./chat.db"
+    
+    # Security
+    secret_key: str = "your-secret-key-change-this-in-production"
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60 * 24  # 24 hours
+    refresh_token_expire_days: int = 7  # 7 days
+    
+    # CORS
+    allowed_origins: List[str] = ["http://localhost:3000"]
+    
+    # Server
+    host: str = "0.0.0.0"
+    port: int = 8000
+    
+    # Push Notifications (VAPID) - Generated from vapidkeys.com
+    vapid_public_key: str = os.getenv("VAPID_PUBLIC_KEY", "")
+    vapid_private_key: str = os.getenv("VAPID_PRIVATE_KEY", "")
+    vapid_email: str = os.getenv("VAPID_EMAIL", "mailto:your-email@example.com") 
+
+    model_config = ConfigDict(env_file=".env")
+
+settings = Settings()
