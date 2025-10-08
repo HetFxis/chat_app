@@ -107,7 +107,7 @@ export async function unsubscribeUser() {
     const subscription = await registration.pushManager.getSubscription();
     
     if (subscription) {
-      // Unsubscribe from push
+gi
       await subscription.unsubscribe();
       
       // Notify backend

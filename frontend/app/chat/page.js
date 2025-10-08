@@ -345,7 +345,6 @@ export default function Chat() {
     g.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
   );
 
-  // Get current messages based on selected user or group
   const getCurrentMessages = () => {
     if (selectedGroup) {
       return groupMessages[selectedGroup.id] || [];
@@ -353,9 +352,9 @@ export default function Chat() {
       return privateMessages[selectedUser] || [];
     }
     return messages.filter((msg) => !msg.isPrivate);
-  };
+  }; 
 
-  // Handle group selection
+  // Handle  selection
   const handleGroupSelect = (group) => {
     setSelectedGroup(group);
     setSelectedUser(null);
