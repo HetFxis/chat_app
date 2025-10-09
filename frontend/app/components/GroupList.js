@@ -42,10 +42,18 @@ export default function GroupList({
 
   // Close menu when clicking outside
   useEffect(() => {
-    const handleClickOutside = () => setShowGroupMenu(null);
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, []);
+    const handleClickOutside = (event) => {
+      // Don't close if clicking on the menu button or menu itself
+      if (!event.target.closest('.group-menu-container')) {
+        setShowGroupMenu(null);
+      }
+    };
+    
+    if (showGroupMenu !== null) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [showGroupMenu]);
 
   return (
     <div className="space-y-2">
@@ -114,20 +122,22 @@ export default function GroupList({
                 </div>
               </div>
               
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowGroupMenu(showGroupMenu === group.id ? null : group.id);
-                }}
-                className="text-gray-400 hover:text-gray-600 p-1 ml-2"
-              >
-                <FiMoreVertical size={16} />
-              </button>
+              <div className="group-menu-container">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowGroupMenu(showGroupMenu === group.id ? null : group.id);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 p-1 ml-2"
+                >
+                  <FiMoreVertical size={16} />
+                </button>
+              </div>
             </div>
 
             {/* Group Menu */}
             {showGroupMenu === group.id && (
-              <div className="absolute right-2 top-12 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[150px]">
+              <div className="group-menu-container absolute right-2 top-12 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[150px]">
                 {isGroupAdmin(group) && (
                   <>
                     <button className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-gray-700">
