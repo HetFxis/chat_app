@@ -11,7 +11,8 @@ export default function GroupList({
   onGroupSelect, 
   onCreateGroup, 
   user,
-  onGroupUpdate 
+  onGroupUpdate,
+  onAddMembers 
 }) {
   const [showGroupMenu, setShowGroupMenu] = useState(null);
 
@@ -134,7 +135,13 @@ export default function GroupList({
                       <FiSettings size={16} />
                       Group Settings
                     </button>
-                    <button className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-gray-700">
+                    <button 
+                      onClick={() => {
+                        onAddMembers(group);
+                        setShowGroupMenu(null);
+                      }}  
+                      className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-gray-700"
+                    >
                       <FiUserPlus size={16} />
                       Add Members
                     </button>

@@ -24,9 +24,10 @@ import {
   checkSubscription,
 } from "../component/pushSubscription";
 import CreateGroupModal from "../components/CreateGroupModal";
+import AddMemberModal from "../components/AddMemberModal";
 import GroupList from "../components/GroupList";
 import GroupChat from "../components/GroupChat";
-
+import AnimatedModel from "../m/page";
 export default function Chat() {
   const router = useRouter();
   const [user, setUser] = useState(null);
@@ -42,6 +43,8 @@ export default function Chat() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("users"); // "users" or "groups"
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+  const [selectedGroupForAddMember, setSelectedGroupForAddMember] = useState(null);
   const messagesEndRef = useRef(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -162,18 +165,34 @@ export default function Chat() {
   useEffect(() => {
     if (!selectedGroup || !user) return;
 
+    // Check if user is still a member of the selected group
+    const isStillMember = groups.some(group => group.id === selectedGroup.id);
+    
+    if (!isStillMember) {
+      // User is no longer a member, clear selection and redirect to general chat
+      setSelectedGroup(null);
+      setSelectedUser(null);
+      setActiveTab("users");
+      return;
+    }
+
     const loadGroupMessages = async () => {
       try {
         if (typeof window === "undefined") return;
 
         const response = await api.get(`/api/groups/${selectedGroup.id}/messages`);
-
         setGroupMessages((prev) => ({
           ...prev,
           [selectedGroup.id]: response.data,
         }));
       } catch (error) {
         console.error("Failed to load group messages:", error);
+        // If 403 Forbidden, user is not a member anymore
+        if (error.response?.status === 403) {
+          setSelectedGroup(null);
+          setSelectedUser(null);
+          setActiveTab("users");
+        }
       }
     };
 
@@ -181,7 +200,7 @@ export default function Chat() {
     if (!groupMessages[selectedGroup.id]) {
       loadGroupMessages();
     }
-  }, [selectedGroup, user, groupMessages]);
+  }, [selectedGroup, groups, user, groupMessages]);
 
   // WebSocket connection
   useEffect(() => {
@@ -199,6 +218,31 @@ export default function Chat() {
 
       if (data.type === "users_update") {
         setOnlineUsers(data.users.filter((u) => u !== user.username));
+      } else if (data.type === "group_update") {
+        if (data.action === "added_to_group") {
+          // Add group if not already present
+          setGroups((prev) => {
+            const exists = prev.find(g => g.id === data.group.id);
+            return exists ? prev : [...prev, data.group];
+          });
+        } else if (data.action === "removed_from_group") {
+          // Remove group from list (user left the group)
+          setGroups((prev) => prev.filter(g => g.id !== data.group.id));
+          // Clear selection if this was the selected group
+          if (selectedGroup?.id === data.group.id) {
+            setSelectedGroup(null);
+          }
+        } else if (data.action === "user_left_group") {
+          // Another user left the group - refresh group data to update member count
+          handleGroupUpdate();
+          // Show notification about who left
+          if (data.group.user_left) {
+            console.log(`${data.group.user_left} left the group: ${data.group.name}`);
+          }
+        }
+      } else if (data.type === "groups_refresh") {
+        // Refresh groups list from server
+        handleGroupUpdate();
       } else if (data.type === "message") {
         setMessages((prev) => [
           ...prev,
@@ -386,6 +430,17 @@ export default function Chat() {
     }
   };
 
+  // Handle add members
+  const handleAddMembers = (group) => {
+    setSelectedGroupForAddMember(group);
+    setShowAddMemberModal(true);
+  };
+
+  // Handle member added
+  const handleMemberAdded = () => {
+    handleGroupUpdate(); // Refresh groups to get updated member count
+  };
+
   // Handle sending group message
   const handleSendGroupMessage = (messageData) => {
     // Don't add message locally - it will come back via WebSocket
@@ -395,7 +450,7 @@ export default function Chat() {
   // Show loading state during hydration
   if (!isMounted) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex  items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-800 mb-2">Loading...</h1>
           <p className="text-gray-600">Initializing chat</p>
@@ -455,7 +510,9 @@ export default function Chat() {
               Users
             </button>
             <button
-              onClick={() => setActiveTab("groups")}
+              onClick={() => {setActiveTab("groups")
+                {activeTab != "groups" && handleGroupUpdate()}
+              }}
               className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition ${
                 activeTab === "groups"
                   ? "bg-white text-blue-600 shadow-sm"
@@ -555,6 +612,7 @@ export default function Chat() {
                   onCreateGroup={() => setShowCreateGroupModal(true)}
                   user={user}
                   onGroupUpdate={handleGroupUpdate}
+                  onAddMembers={handleAddMembers}
                 />
               </>
             )}
@@ -583,6 +641,7 @@ export default function Chat() {
           group={selectedGroup}
           user={user}
           ws={ws}
+          activeTab={activeTab}
           isConnected={isConnected}
           messages={getCurrentMessages()}
           onSendMessage={handleSendGroupMessage}
@@ -644,6 +703,7 @@ export default function Chat() {
           {/* Messages Area */}
           <div className="flex-1 overflow-y-auto">
             <div className="p-6 space-y-2 min-h-full">
+                  
             {getCurrentMessages().map((message, index) => (
               <div
                 key={index}
@@ -718,6 +778,18 @@ export default function Chat() {
         isOpen={showCreateGroupModal}
         onClose={() => setShowCreateGroupModal(false)}
         onGroupCreated={handleGroupCreated}
+        onlineUsers={onlineUsers}
+      />
+      
+      {/* Add Member Modal */}
+      <AddMemberModal
+        isOpen={showAddMemberModal}
+        onClose={() => {
+          setShowAddMemberModal(false);
+          setSelectedGroupForAddMember(null);
+        }}
+        group={selectedGroupForAddMember}
+        onMemberAdded={handleMemberAdded}
         onlineUsers={onlineUsers}
       />
     </div>

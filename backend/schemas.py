@@ -74,3 +74,6 @@ class GroupMemberResponse(BaseModel):
     role: Optional[str] = "member"
     
     model_config = ConfigDict(from_attributes=True)
+
+class AddMembersRequest(BaseModel):
+    members: List[str]

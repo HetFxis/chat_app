@@ -5,14 +5,15 @@ import { format } from "date-fns";
 import { FiSend, FiUsers, FiMoreVertical, FiInfo } from "react-icons/fi";
 import toast from "react-hot-toast";
 import api from "../../utils/auth";
-
-export default function GroupChat({ 
-  group, 
-  user, 
-  ws, 
+import AnimatedModel from "../m/page.js";
+export default function GroupChat({
+  group,
+  activeTab,
+  user,
+  ws,
   isConnected,
   messages,
-  onSendMessage 
+  onSendMessage,
 }) {
   const [newMessage, setNewMessage] = useState("");
   const [groupMembers, setGroupMembers] = useState([]);
@@ -23,9 +24,9 @@ export default function GroupChat({
   useEffect(() => {
     const scrollToBottom = () => {
       if (messagesEndRef.current) {
-        messagesEndRef.current.scrollIntoView({ 
+        messagesEndRef.current.scrollIntoView({
           behavior: "smooth",
-          block: "end"
+          block: "end",
         });
       }
     };
@@ -69,9 +70,9 @@ export default function GroupChat({
 
   const getGroupInitials = (name) => {
     return name
-      .split(' ')
-      .map(word => word[0])
-      .join('')
+      .split(" ")
+      .map((word) => word[0])
+      .join("")
       .toUpperCase()
       .slice(0, 2);
   };
@@ -134,23 +135,23 @@ export default function GroupChat({
             >
               <FiInfo size={20} />
             </button>
-            <button className="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100">
-              <FiMoreVertical size={20} />
-            </button>
           </div>
         </div>
       </div>
 
       <div className="flex-1 flex min-h-0">
         {/* Messages Area */}
-        <div className="flex-1 flex no-scrollbar flex-col min-h-0">
+        <div
+          onClick={() => setShowGroupInfo(false)}
+          className="flex-1 flex no-scrollbar flex-col min-h-0"
+        >
           <div className="flex-1 overflow-y-auto">
             <div className="p-6 space-y-2 min-h-full">
               {messages.length === 0 ? (
                 <div className="flex items-center justify-center h-full min-h-[400px]">
                   <div className="text-center">
-                    <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xl mx-auto mb-4">
-                      {getGroupInitials(group.name)}
+                    <div className="  rounded-full flex items-center justify-center text-white font-bold text-xl mx-auto mb-4">
+                      <AnimatedModel color="#8bc5f7" />
                     </div>
                     <h3 className="text-lg font-semibold text-gray-600 mb-2">
                       Welcome to {group.name}!
@@ -226,15 +227,19 @@ export default function GroupChat({
         </div>
 
         {/* Group Info Sidebar */}
-        {showGroupInfo && (
-          <div className="w-80 bg-white border-l border-gray-200 p-6 transform transition-all duration-300 shadow-lg  ease-in-out
- ">
+        {showGroupInfo && activeTab === "groups" && (
+          <div
+            className="w-80 bg-white border-l border-gray-200 p-6 transform transition-all duration-300 shadow-lg  ease-in-out
+ "
+          >
             <div className="space-y-6">
               <div className="text-center">
                 <div className="w-20 h-20 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4">
                   {getGroupInitials(group.name)}
                 </div>
-                <h3 className="text-xl font-semibold text-gray-800">{group.name}</h3>
+                <h3 className="text-xl font-semibold text-gray-800">
+                  {group.name}
+                </h3>
                 {group.description && (
                   <p className="text-gray-600 mt-2">{group.description}</p>
                 )}
@@ -250,12 +255,17 @@ export default function GroupChat({
                 </h4>
                 <div className="space-y-2 max-h-60 overflow-y-auto">
                   {groupMembers.map((member) => (
-                    <div key={member.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50">
+                    <div
+                      key={member.id}
+                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50"
+                    >
                       <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
                         {member.username[0].toUpperCase()}
                       </div>
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-800">{member.username}</p>
+                        <p className="text-sm font-medium text-gray-800">
+                          {member.username}
+                        </p>
                         {member.id === group.created_by && (
                           <p className="text-xs text-blue-600">Admin</p>
                         )}

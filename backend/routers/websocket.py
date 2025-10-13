@@ -1,5 +1,6 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 import json
+import asyncio
 
 from database import get_db
 from models import User, Message, GroupChat, group_membership
@@ -8,6 +9,16 @@ from .push import send_push_to_username
 from sqlalchemy import and_
 
 router = APIRouter(tags=["websocket"])
+
+async def send_push_background(recipient: str, title: str, body: str, data: dict):
+    """Send push notification in background without blocking WebSocket"""
+    db = next(get_db())
+    try:
+        await send_push_to_username(recipient, title, body, data, db)
+    except Exception as e:
+        print(f"Background push notification error: {e}")
+    finally:
+        db.close()
 
 @router.websocket("/ws/{username}")
 async def websocket_endpoint(websocket: WebSocket, username: str):
@@ -51,19 +62,17 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                 # Send to recipient
                 sent = await manager.send_personal_message(private_msg, recipient)
                 
-                # Always send push notification (service worker will decide whether to show)
-                # This ensures notifications work even when tab is in background
-                send_push_to_username(
+               
+                # Send push notification in background (non-blocking)
+                asyncio.create_task(send_push_background(
                     recipient,
                     f"New message from {username}",
                     content[:100],  # First 100 chars
-                    {"sender": username, "type": "private"},
-                    db
-                )
+                    {"sender": username, "type": "private"}
+                ))
                 
                 # Echo back to sender
                 await manager.send_personal_message(private_msg, username)
-                
             elif message_data.get("type") == "group" and message_data.get("group_id"):
                 group_id = message_data.get("group_id")
                 content = message_data.get("content", "")
@@ -115,15 +124,14 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                 for member in group_members:
                     await manager.send_personal_message(group_msg, member.username)
                     
-                    # Send push notification to offline members (except sender)
+                    # Send push notification to offline members (except sender) in background
                     if member.username != username:
-                        send_push_to_username(
+                        asyncio.create_task(send_push_background(
                             member.username,
                             f"New message in {group.name} from {username}",
                             content[:100],
-                            {"sender": username, "type": "group", "group_name": group.name},
-                            db
-                        )
+                            {"sender": username, "type": "group", "group_name": group.name}
+                        ))
                 
             else:
                 # Save public message to database
@@ -146,18 +154,17 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                 }))
                 
 
-                # Send push notifications to offline users
+                # Send push notifications to offline users in background
                 all_users = db.query(User).filter(User.username != username).all()
-                for user in all_users:
+                for other_user in all_users:
                     # Check if user is offline (not in active connections)
-                    # if user.username not in manager.active_connections:
-                    send_push_to_username(
-                            user.username,
-                            f"New message in general from {username}",
-                            content[:100],
-                            {"sender": username, "type": "public"},
-                            db
-                    )
+                    # if other_user.username not in manager.active_connections:
+                    asyncio.create_task(send_push_background(
+                        other_user.username,
+                        f"New message in general from {username}",
+                        content[:100],
+                        {"sender": username, "type": "public"}
+                    ))
             
     except WebSocketDisconnect:
         manager.disconnect(username)
