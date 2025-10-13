@@ -72,7 +72,7 @@ async def get_vapid_public_key():
     """Get VAPID public key for frontend"""
     return {"publicKey": settings.vapid_public_key}
 
-def send_push_notification(user_id: int, title: str, body: str, data: dict = None, db: Session = None):
+async def send_push_notification(user_id: int, title: str, body: str, data: dict = None, db: Session = None):
     """Send push notification to a user's all subscribed devices"""
     try:
         print(f"Sending push notification to user_id: {user_id}")
@@ -105,7 +105,7 @@ def send_push_notification(user_id: int, title: str, body: str, data: dict = Non
         for subscription in subscriptions:
             try:
                 webpush(
-                    subscription_info={
+                    subscription_info={     
                         "endpoint": subscription.endpoint,
                         "keys": {
                             "p256dh": subscription.p256dh,
@@ -133,11 +133,11 @@ def send_push_notification(user_id: int, title: str, body: str, data: dict = Non
         print(f"Error sending push notification: {e}")
         return False
 
-def send_push_to_username(username: str, title: str, body: str, data: dict = None, db: Session = None):
+async def send_push_to_username(username: str, title: str, body: str, data: dict = None, db: Session = None):
     """Send push notification to a user by username"""
     user = db.query(User).filter(User.username == username).first()
     if user:
-        return send_push_notification(user.id, title, body, data, db)
+        return await send_push_notification(user.id, title, body, data, db)
     return False
 
 

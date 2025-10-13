@@ -14,14 +14,15 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # Import all models to ensure they are registered with Base
 from models import Base, User, Message, PushSubscription, GroupChat, group_membership
 
-# Create tables
+# Create tables (only if they don't exist - for development without migrations)
 def create_tables():
-    """Create all database tables"""
+    """Create all database tables if they don't exist"""
     Base.metadata.create_all(bind=engine)
-    print("All database tables created successfully!")
+    print("Database tables created (if they didn't exist)!")
 
-# Create tables on import (for development)
-create_tables()
+# Optional: Create tables on import for development
+# Comment this out if you want to use migrations exclusively
+# create_tables()
 
 # Dependency to get database session
 def get_db() -> Session:

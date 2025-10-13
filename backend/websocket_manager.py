@@ -1,4 +1,4 @@
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import WebSocket
 from typing import Dict
 import json
 
@@ -48,6 +48,24 @@ class ConnectionManager:
             "users": users
         })
         await self.broadcast(message)
+    
+    async def broadcast_group_update(self, username: str, group_data: dict, action: str = "added_to_group"):
+        """Broadcast group updates to specific user"""
+        message = json.dumps({
+            "type": "group_update",
+            "action": action,
+            "group": group_data
+        })
+        await self.send_personal_message(message, username)
+    
+    async def broadcast_group_list_update(self, usernames: list):
+        """Broadcast group list refresh to multiple users"""
+        message = json.dumps({
+            "type": "groups_refresh",
+            "action": "refresh_groups"
+        })
+        for username in usernames:
+            await self.send_personal_message(message, username)
 
 # Global connection manager instance
 manager = ConnectionManager()
